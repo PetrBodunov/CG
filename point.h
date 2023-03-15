@@ -9,9 +9,8 @@ class Point
 public:
     QPoint coord;
     QColor col;
-    float transparency;
 
-    Point(QPoint coord, QColor col, float transparency);
+    Point(QPoint coord, QColor col);
 };
 
 #endif // POINT_H
