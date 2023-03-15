@@ -12,6 +12,8 @@
 #include "point.h"
 #include <cmath>
 #include <map>
+#include <QGuiApplication>
+
 
 class OGLDraw : public QOpenGLWidget, public QOpenGLFunctions
 {
@@ -21,62 +23,32 @@ protected:
     void paintGL() override;
 
 public:
-    QString type = "GL_POINTS";
-    QColor cur_color = Qt::blue;
-    int cur_point_size = 1;
-    int cur_line_size = 1;
+    QColor cur_color = Qt::white;
+    int cur_point_size = 20;
+    int cur_line_size = 5;
     QVector<Point> points;
-    bool is_clear = false;
     int start_width;
     int start_height;
+    int iter;
 
-    bool is_scissor_test = false;
-    bool is_alpha_test = false;
-    bool is_blend = false;
-    std::unique_ptr<QRubberBand> rubberBand;
-    QPoint event_point;
-    QString type_alpha = "GL_NEVER";
-    float ref_alpha = 0;
-    float cur_transparency = 1;
-    QString type_sfactor = "GL_ZERO";
-    QString type_dfactor = "GL_ZERO";
-    std::map<QString, GLenum> sfactor_map = {{"GL_ZERO", GL_ZERO},
-                                             {"GL_ONE", GL_ONE},
-                                             {"GL_DST_COLOR", GL_DST_COLOR},
-                                             {"GL_ONE_MINUS_DST_COLOR", GL_ONE_MINUS_DST_COLOR},
-                                             {"GL_SRC_ALPHA", GL_SRC_ALPHA},
-                                             {"GL_ONE_MINUS_SRC_ALPHA", GL_ONE_MINUS_SRC_ALPHA},
-                                             {"GL_DST_ALPHA", GL_DST_ALPHA},
-                                             {"GL_ONE_MINUS_DST_ALPHA", GL_ONE_MINUS_DST_ALPHA},
-                                             {"GL_SRC_ALPHA_SATURATE", GL_SRC_ALPHA_SATURATE}
-                                            };
+    int c_p = 6;
+    int r = 200;
+    int x0;
+    int y0;
+    int rotate_x = 1;
 
-    std::map<QString, GLenum> dfactor_map = {{"GL_ZERO", GL_ZERO},
-                                             {"GL_ONE", GL_ONE},
-                                             {"GL_SRC_COLOR", GL_SRC_COLOR},
-                                             {"GL_ONE_MINUS_SRC_COLOR", GL_ONE_MINUS_SRC_COLOR},
-                                             {"GL_SRC_ALPHA", GL_SRC_ALPHA},
-                                             {"GL_ONE_MINUS_SRC_ALPHA", GL_ONE_MINUS_SRC_ALPHA},
-                                             {"GL_DST_ALPHA", GL_DST_ALPHA},
-                                             {"GL_ONE_MINUS_DST_ALPHA", GL_ONE_MINUS_DST_ALPHA}
-                                            };
 
     OGLDraw(QWidget* pwgt = NULL);
 
-    void draw(GLenum type);
+    void draw();
 
     void draw_circles();
 
-    void draw_scissor_test();
+    void make_points();
 
-    void draw_alpha_test();
+    void wheelEvent(QWheelEvent *event) override;
 
-    void draw_blend();
-
-
-    void mousePressEvent(QMouseEvent*) override;
-    void mouseMoveEvent(QMouseEvent *apEvent) override;
-    void mouseReleaseEvent(QMouseEvent *apEvent) override;
+    void change_points_coord();
 };
 
 #endif // OGLDRAW_H

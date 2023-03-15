@@ -10,6 +10,7 @@ void OGLDraw::initializeGL()
     QOpenGLFunctions* pFunc = QOpenGLContext::currentContext()->functions();
 //    pFunc->glClearColor(211/255.0f,211/255.0f,211/255.0f, 1.0f);
     pFunc->glClearColor(0, 0, 0, 1.0f);
+
     start_width = this->width();
     start_height = this->height();
 }
@@ -20,131 +21,136 @@ void OGLDraw::resizeGL(int nWidth, int nHeight)
     glLoadIdentity();
     glOrtho(0, nWidth, nHeight, 0, -1, 1);
     glViewport (0, 0, (GLint)nWidth, (GLint)nHeight);
+    x0 = this->width() / 2;
+    y0 = this->height() / 2;
+    qDebug() << "x0 " << x0 << " y0 " << y0;
 }
 
 void OGLDraw::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    draw_scissor_test();
+//    for (auto p: points)
+//        qDebug() << "coord: " << p.coord;
+//    qDebug() << "--------------------------";
 
-    draw_alpha_test();
-
-    draw_blend();
-
-    if (type == "GL_POINTS")            draw(GL_POINTS);
-    if (type == "GL_LINES")             draw(GL_LINES);
-    if (type == "GL_LINE_STRIP")        draw(GL_LINE_STRIP);
-    if (type == "GL_LINE_LOOP")         draw(GL_LINE_LOOP);
-    if (type == "GL_TRIANGLES")         draw(GL_TRIANGLES);
-    if (type == "GL_TRIANGLE_STRIP")    draw(GL_TRIANGLE_STRIP);
-    if (type == "GL_TRIANGLE_FAN")      draw(GL_TRIANGLE_FAN);
-    if (type == "GL_QUADS")             draw(GL_QUADS);
-    if (type == "GL_QUAD_STRIP")        draw(GL_QUAD_STRIP);
-    if (type == "GL_POLYGON")           draw(GL_POLYGON);
-    if (type == "CIRCLES")              draw_circles();
-
-    if (is_clear){
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        is_clear = false;
-        points.clear();
-    }
+    draw();
 }
 
-void OGLDraw::draw(GLenum type)
+void OGLDraw::draw()
 {
     glPointSize(cur_point_size);
     glLineWidth(cur_line_size);
-    glBegin(type);
-        for (auto point: points){
-            glColor4f(point.col.redF(), point.col.greenF(), point.col.blueF(), point.transparency);
-            glVertex2f (point.coord.rx() * this->width() / start_width, point.coord.ry() * this->height() / start_height);
+    glScalef(rotate_x, rotate_x, 1);
+
+    glBegin(GL_LINES);
+    for (auto p1: points){
+        for (auto p2: points){
+            glColor3f(p1.col.redF(), p1.col.greenF(), p1.col.blueF());
+            glVertex2f (p1.coord.rx() * this->width() / start_width, p1.coord.ry() * this->height() / start_height);
+
+            glColor3f(p2.col.redF(), p2.col.greenF(), p2.col.blueF());
+            glVertex2f (p2.coord.rx() * this->width() / start_width, p2.coord.ry() * this->height() / start_height);
         }
+    }
     glEnd();
+
+    draw_circles();
+
 }
 
-void OGLDraw::draw_scissor_test()
-{
-    if (is_scissor_test && rubberBand && (rubberBand->width() > 0 || rubberBand->height() > 0)){
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(rubberBand->x() * start_width / this->width(), this->height() - (rubberBand->y() + rubberBand->height())  * start_height / this->height(),
-                  rubberBand->width() * start_width / this->width(), rubberBand->height() * start_height / this->height());
-    }
-    else glDisable(GL_SCISSOR_TEST);
-}
-
-void OGLDraw::draw_alpha_test()
-{
-    if (is_alpha_test){
-        glEnable(GL_ALPHA_TEST);
-        if (type_alpha == "GL_NEVER") glAlphaFunc(GL_NEVER, ref_alpha);
-        if (type_alpha == "GL_LESS") glAlphaFunc(GL_LESS, ref_alpha);
-        if (type_alpha == "GL_EQUAL") glAlphaFunc(GL_EQUAL, ref_alpha);
-        if (type_alpha == "GL_LEQUAL") glAlphaFunc(GL_LEQUAL, ref_alpha);
-        if (type_alpha == "GL_GREATER") glAlphaFunc(GL_GREATER, ref_alpha);
-        if (type_alpha == "GL_NOTEQUAL") glAlphaFunc(GL_NOTEQUAL, ref_alpha);
-        if (type_alpha == "GL_GEQUAL") glAlphaFunc(GL_GEQUAL, ref_alpha);
-        if (type_alpha == "GL_ALWAYS") glAlphaFunc(GL_ALWAYS, ref_alpha);
-    }
-    else glDisable(GL_ALPHA_TEST);
-}
-
-void OGLDraw::mousePressEvent(QMouseEvent* apEvent)
-{
-    event_point = apEvent->pos();
-    if (!rubberBand)
-        rubberBand = std::unique_ptr<QRubberBand>(new QRubberBand(QRubberBand::Rectangle, this));
-    rubberBand->setGeometry(QRect(event_point, QSize()));
-    rubberBand->show();
-}
-
-void OGLDraw::mouseMoveEvent(QMouseEvent *apEvent)
-{
-    rubberBand->setGeometry(QRect(event_point, apEvent->pos()).normalized());
-}
-
-void OGLDraw::mouseReleaseEvent(QMouseEvent *apEvent)
-{
-    rubberBand->hide();
-    if (!(rubberBand->width() > 0 || rubberBand->height() > 0)){
-        QPoint p = apEvent->pos();
-        p.rx() = p.rx() * start_width / this->width();
-        p.ry() = p.ry() * start_height / this->height();
-        Point point(p, cur_color, cur_transparency);
-        points.append(point);
-    }
-    else {
-        if (!is_scissor_test)
-            rubberBand = NULL;
-    }
-    repaint();
-}
 
 void OGLDraw::draw_circles()
 {
-    int triangleAmount = 40; //# of triangles used to draw circle
+    int pointAmount = 60; //# of triangles used to draw circle
     GLfloat twicePi = 2.0f * M_PI;
 
     for (auto point: points){
-        glColor4fv((GLfloat*)&point.col);
+        glColor3fv((GLfloat*)&point.col);
         glVertex2fv((GLfloat*)&point.coord);
-        glBegin(GL_TRIANGLE_FAN);
-            for(int i = 0; i <= triangleAmount;i++) {
-                glColor4f(point.col.redF(), point.col.greenF(), point.col.blueF(), point.transparency);
+        glBegin(GL_LINE_LOOP);
+            for(int i = 0; i <= pointAmount;i++) {
+                glColor3f(point.col.redF(), point.col.greenF(), point.col.blueF());
                 glVertex2f(
-                    (point.coord.rx() + (cur_point_size * cos(i * twicePi / triangleAmount))) * start_width / this->width(),
-                    (point.coord.ry() + (cur_point_size * sin(i * twicePi / triangleAmount))) * start_height / this->height()
+                    (point.coord.rx() + (r / 2 * cos(i * twicePi / pointAmount))) * this->width() / start_width,
+                    (point.coord.ry() + (r / 2 * sin(i * twicePi / pointAmount))) * this->height() / start_height
                 );
             }
         glEnd();
     }
 }
 
-void OGLDraw::draw_blend()
+void OGLDraw::make_points()
 {
-    if (is_blend){
-        glEnable(GL_BLEND);
-        glBlendFunc(sfactor_map[type_sfactor], dfactor_map[type_dfactor]);
+    srand((unsigned) time(NULL));
+
+    qDebug() << "kek " << iter;
+
+    for (int j = 0; j < iter; j++){
+        int cur_r = r * pow(2, j);
+        for (int i = 0; i < c_p; i++){
+            QPoint p(x0 * start_width / this->width() + cur_r * cos(2 * M_PI * i / c_p + M_PI / 2),
+                     y0 * start_height / this->height() + cur_r * sin(2 * M_PI * i / c_p  + M_PI / 2));
+            QColor col(std::rand() % 255, std::rand() % 255, std::rand() % 255);
+            Point point(p, col);
+            points.append(point);
+        }
     }
-    else glDisable(GL_BLEND);
+}
+
+void OGLDraw::change_points_coord(){
+    for (int j = 0; j < iter; j++){
+        int cur_r = r * pow(2, j);
+        for (int i = c_p * j; i < c_p * (j + 1); i++){
+            QPoint p(x0 * start_width / this->width() + cur_r * cos(2 * M_PI * i / c_p + M_PI / 2),
+                     y0 * start_height / this->height() + cur_r * sin(2 * M_PI * i / c_p  + M_PI / 2));
+            points[i].coord = p;
+        }
+    }
+}
+
+void OGLDraw::wheelEvent(QWheelEvent *event)
+{
+    QPoint nAngle = event->angleDelta();
+    QPoint nPixels = event->pixelDelta();
+    if (!nAngle.isNull()){
+        qDebug() << "wheel";
+        if (event->angleDelta().y() > 0)
+        {
+            qDebug() << "zoom in";
+            r += 4;
+            change_points_coord();
+            repaint();
+            return;
+        }
+
+        else if(event->angleDelta().y() < 0)
+        {
+            qDebug() << "zoom out";
+            r -= 4;
+            change_points_coord();
+            repaint();
+            return;
+        }
+    }
+//    else if (!nPixels.isNull()){
+//        qDebug() << "touchpad";
+//        glScalef(1.002,1.002,1);
+//    }
+//    bool controlKeyIsHeld = QGuiApplication::keyboardModifiers().testFlag(Qt::ControlModifier);
+
+//    // If vertical mouse wheel goes up, then zoom in.
+//    if(event->angleDelta().y() > 0 && controlKeyIsHeld)
+//    {
+//        this->zoomIn(1);
+//        return;
+//    }
+
+//    else if(event->angleDelta().y() < 0 && controlKeyIsHeld)
+//    {
+//        this->zoomOut(1);
+//        return;
+//    }
+
+//    QTextEdit::wheelEvent(event);
 }
