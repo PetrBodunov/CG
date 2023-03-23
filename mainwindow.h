@@ -2,6 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QColorDialog>
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -17,8 +19,9 @@ public:
 
 private slots:
     void on_quitButton_clicked();
+    void on_clearButton_clicked();
 
-    void on_iterationSlider_sliderMoved(int position);
+    void on_constructioTypeBox_currentTextChanged(const QString &arg1);
 
 private:
     Ui::MainWindow *ui;

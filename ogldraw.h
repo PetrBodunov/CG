@@ -8,11 +8,8 @@
 #include <QString>
 #include <QMouseEvent>
 #include <QVector>
-#include <QRubberBand>
 #include "point.h"
 #include <cmath>
-#include <map>
-#include <QGuiApplication>
 
 
 class OGLDraw : public QOpenGLWidget, public QOpenGLFunctions
@@ -23,32 +20,20 @@ protected:
     void paintGL() override;
 
 public:
-    QColor cur_color = Qt::white;
-    int cur_point_size = 20;
-    int cur_line_size = 5;
+    int cur_line_size = 2;
+    QColor cur_color = QColor(QColorConstants::Svg::purple);
     QVector<Point> points;
     int start_width;
     int start_height;
-    int iter;
-
-    int c_p = 6;
-    int r = 200;
-    int x0;
-    int y0;
-    int rotate_x = 1;
-
+    bool is_clear = false;
+    QString type = "Standart Bezier function";
 
     OGLDraw(QWidget* pwgt = NULL);
 
+    void mousePressEvent(QMouseEvent* apEvent) override;
     void draw();
-
-    void draw_circles();
-
-    void make_points();
-
-    void wheelEvent(QWheelEvent *event) override;
-
-    void change_points_coord();
+    void draw_bezier_func();
+    void draw_without_bezier_func();
 };
 
 #endif // OGLDRAW_H

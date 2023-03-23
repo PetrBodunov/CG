@@ -19,12 +19,16 @@ void MainWindow::on_quitButton_clicked()
     QApplication::quit();
 }
 
-
-void MainWindow::on_iterationSlider_sliderMoved(int position)
+void MainWindow::on_clearButton_clicked()
 {
-    ui->openGLWidget->iter = position;
-    ui->openGLWidget->points.clear();
-    ui->openGLWidget->make_points();
+    ui->openGLWidget->is_clear = true;
+    ui->openGLWidget->repaint();
+}
+
+
+void MainWindow::on_constructioTypeBox_currentTextChanged(const QString &arg1)
+{
+    ui->openGLWidget->type = arg1;
     ui->openGLWidget->repaint();
 }
 

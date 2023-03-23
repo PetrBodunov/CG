@@ -1,5 +1,10 @@
 #include "ogldraw.h"
 
+int comp(const Point* a, const Point*b)
+{
+    return a->coord.x() - b->coord.x();
+}
+
 OGLDraw::OGLDraw(QWidget* pwgt) : QOpenGLWidget(pwgt)
 {
 }
@@ -21,136 +26,108 @@ void OGLDraw::resizeGL(int nWidth, int nHeight)
     glLoadIdentity();
     glOrtho(0, nWidth, nHeight, 0, -1, 1);
     glViewport (0, 0, (GLint)nWidth, (GLint)nHeight);
-    x0 = this->width() / 2;
-    y0 = this->height() / 2;
-    qDebug() << "x0 " << x0 << " y0 " << y0;
+
 }
 
 void OGLDraw::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-//    for (auto p: points)
-//        qDebug() << "coord: " << p.coord;
-//    qDebug() << "--------------------------";
-
     draw();
+
+    if (is_clear){
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        is_clear = false;
+        points.clear();
+    }
 }
 
 void OGLDraw::draw()
 {
-    glPointSize(cur_point_size);
     glLineWidth(cur_line_size);
-    glScalef(rotate_x, rotate_x, 1);
 
-    glBegin(GL_LINES);
-    for (auto p1: points){
-        for (auto p2: points){
-            glColor3f(p1.col.redF(), p1.col.greenF(), p1.col.blueF());
-            glVertex2f (p1.coord.rx() * this->width() / start_width, p1.coord.ry() * this->height() / start_height);
-
-            glColor3f(p2.col.redF(), p2.col.greenF(), p2.col.blueF());
-            glVertex2f (p2.coord.rx() * this->width() / start_width, p2.coord.ry() * this->height() / start_height);
-        }
-    }
-    glEnd();
-
-    draw_circles();
-
+    if (type == "Standart Bezier function")
+        draw_bezier_func();
+    else
+        draw_without_bezier_func();
 }
 
-
-void OGLDraw::draw_circles()
+void OGLDraw::draw_bezier_func()
 {
-    int pointAmount = 60; //# of triangles used to draw circle
-    GLfloat twicePi = 2.0f * M_PI;
-
-    for (auto point: points){
-        glColor3fv((GLfloat*)&point.col);
-        glVertex2fv((GLfloat*)&point.coord);
-        glBegin(GL_LINE_LOOP);
-            for(int i = 0; i <= pointAmount;i++) {
-                glColor3f(point.col.redF(), point.col.greenF(), point.col.blueF());
-                glVertex2f(
-                    (point.coord.rx() + (r / 2 * cos(i * twicePi / pointAmount))) * this->width() / start_width,
-                    (point.coord.ry() + (r / 2 * sin(i * twicePi / pointAmount))) * this->height() / start_height
-                );
+    for (int i = 0; i < points.size(); i += 3){
+        glEnable(GL_LINE_STIPPLE);
+        glLineStipple(1,0x0101);
+        glColor3f(255, 255, 0);
+        glBegin(GL_LINE_STRIP);
+            for (int j = i; j < points.size() && j < i + 4; j++){
+                glVertex2f(points[j].coord.rx() * this->width() / start_width,
+                           points[j].coord.ry() * this->height() / start_height);
             }
         glEnd();
+        glDisable(GL_LINE_STIPPLE);
+
+        if (i + 3 < points.size()){
+            glBegin(GL_LINES);
+                for (float t = 0; t < 1; t += 0.01){
+                    QPoint p;
+                    p.rx() = pow(1 - t, 3) * points[i].coord.rx() + 3 * t * pow((t-1), 2) * points[i + 1].coord.rx() +
+                            3 * pow(t, 2) * (1 - t) * points[i + 2].coord.rx() + pow(t, 3) * points[i + 3].coord.rx();
+                    p.ry() = pow(1 - t, 3) * points[i].coord.ry() + 3 * t * pow((t-1), 2) * points[i + 1].coord.ry() +
+                            3 * pow(t, 2) * (1 - t) * points[i + 2].coord.ry() + pow(t, 3) * points[i + 3].coord.ry();
+                    glColor3f(180, 0, 180);
+                    glVertex2f (p.rx() * this->width() / start_width, p.ry() * this->height() / start_height);
+                }
+            glEnd();
+        }
     }
 }
 
-void OGLDraw::make_points()
+void OGLDraw::draw_without_bezier_func()
 {
-    srand((unsigned) time(NULL));
+    for (int i = 0; i < points.size(); i += 3){
+        glEnable(GL_LINE_STIPPLE);
+        glLineStipple(1,0x0101);
+        glColor3f(255, 255, 0);
+        glBegin(GL_LINE_STRIP);
+            for (int j = i; j < points.size() && j < i + 4; j++){
+                glVertex2f(points[j].coord.rx() * this->width() / start_width,
+                           points[j].coord.ry() * this->height() / start_height);
+            }
+        glEnd();
+        glDisable(GL_LINE_STIPPLE);
 
-    qDebug() << "kek " << iter;
-
-    for (int j = 0; j < iter; j++){
-        int cur_r = r * pow(2, j);
-        for (int i = 0; i < c_p; i++){
-            QPoint p(x0 * start_width / this->width() + cur_r * cos(2 * M_PI * i / c_p + M_PI / 2),
-                     y0 * start_height / this->height() + cur_r * sin(2 * M_PI * i / c_p  + M_PI / 2));
-            QColor col(std::rand() % 255, std::rand() % 255, std::rand() % 255);
-            Point point(p, col);
-            points.append(point);
+        if (i + 3 < points.size()){
+            glBegin(GL_LINES);
+                for (float t = 0; t < 1; t += 0.01){
+                    QPoint E(t * points[i + 1].coord.rx() + (1 - t) * points[i].coord.rx(),
+                             t * points[i + 1].coord.ry() + (1 - t) * points[i].coord.ry());
+                    QPoint F(t * points[i + 2].coord.rx() + (1 - t) * points[i + 1].coord.rx(),
+                             t * points[i + 2].coord.ry() + (1 - t) * points[i + 1].coord.ry());
+                    QPoint G(t * points[i + 3].coord.rx() + (1 - t) * points[i + 2].coord.rx(),
+                             t * points[i + 3].coord.ry() + (1 - t) * points[i + 2].coord.ry());
+                    QPoint H(t * F.rx() + (1 - t) * E.rx(),
+                             t * F.ry() + (1 - t) * E.ry());
+                    QPoint I(t * G.rx() + (1 - t) * F.rx(),
+                             t * G.ry() + (1 - t) * F.ry());
+                    QPoint J(t * I.rx() + (1 - t) * H.rx(),
+                             t * I.ry() + (1 - t) * H.ry());
+                    glColor3f(180, 0, 180);
+                    glVertex2f (J.rx() * this->width() / start_width, J.ry() * this->height() / start_height);
+                }
+            glEnd();
         }
     }
+
 }
 
-void OGLDraw::change_points_coord(){
-    for (int j = 0; j < iter; j++){
-        int cur_r = r * pow(2, j);
-        for (int i = c_p * j; i < c_p * (j + 1); i++){
-            QPoint p(x0 * start_width / this->width() + cur_r * cos(2 * M_PI * i / c_p + M_PI / 2),
-                     y0 * start_height / this->height() + cur_r * sin(2 * M_PI * i / c_p  + M_PI / 2));
-            points[i].coord = p;
-        }
-    }
-}
-
-void OGLDraw::wheelEvent(QWheelEvent *event)
+void OGLDraw::mousePressEvent(QMouseEvent* apEvent)
 {
-    QPoint nAngle = event->angleDelta();
-    QPoint nPixels = event->pixelDelta();
-    if (!nAngle.isNull()){
-        qDebug() << "wheel";
-        if (event->angleDelta().y() > 0)
-        {
-            qDebug() << "zoom in";
-            r += 4;
-            change_points_coord();
-            repaint();
-            return;
-        }
-
-        else if(event->angleDelta().y() < 0)
-        {
-            qDebug() << "zoom out";
-            r -= 4;
-            change_points_coord();
-            repaint();
-            return;
-        }
-    }
-//    else if (!nPixels.isNull()){
-//        qDebug() << "touchpad";
-//        glScalef(1.002,1.002,1);
-//    }
-//    bool controlKeyIsHeld = QGuiApplication::keyboardModifiers().testFlag(Qt::ControlModifier);
-
-//    // If vertical mouse wheel goes up, then zoom in.
-//    if(event->angleDelta().y() > 0 && controlKeyIsHeld)
-//    {
-//        this->zoomIn(1);
-//        return;
-//    }
-
-//    else if(event->angleDelta().y() < 0 && controlKeyIsHeld)
-//    {
-//        this->zoomOut(1);
-//        return;
-//    }
-
-//    QTextEdit::wheelEvent(event);
+    QPoint p = apEvent->pos();
+    p.rx() = p.rx() * start_width / this->width();
+    p.ry() = p.ry() * start_height / this->height();
+    Point point(p, cur_color);
+    points.append(point);
+    repaint();
 }
+
+
