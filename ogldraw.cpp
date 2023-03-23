@@ -1,5 +1,10 @@
 #include "ogldraw.h"
 
+int comp(const Point* a, const Point*b)
+{
+    return a->coord.x() - b->coord.x();
+}
+
 OGLDraw::OGLDraw(QWidget* pwgt) : QOpenGLWidget(pwgt)
 {
 }
@@ -10,6 +15,7 @@ void OGLDraw::initializeGL()
     QOpenGLFunctions* pFunc = QOpenGLContext::currentContext()->functions();
 //    pFunc->glClearColor(211/255.0f,211/255.0f,211/255.0f, 1.0f);
     pFunc->glClearColor(0, 0, 0, 1.0f);
+
     start_width = this->width();
     start_height = this->height();
 }
@@ -20,29 +26,14 @@ void OGLDraw::resizeGL(int nWidth, int nHeight)
     glLoadIdentity();
     glOrtho(0, nWidth, nHeight, 0, -1, 1);
     glViewport (0, 0, (GLint)nWidth, (GLint)nHeight);
+
 }
 
 void OGLDraw::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    draw_scissor_test();
-
-    draw_alpha_test();
-
-    draw_blend();
-
-    if (type == "GL_POINTS")            draw(GL_POINTS);
-    if (type == "GL_LINES")             draw(GL_LINES);
-    if (type == "GL_LINE_STRIP")        draw(GL_LINE_STRIP);
-    if (type == "GL_LINE_LOOP")         draw(GL_LINE_LOOP);
-    if (type == "GL_TRIANGLES")         draw(GL_TRIANGLES);
-    if (type == "GL_TRIANGLE_STRIP")    draw(GL_TRIANGLE_STRIP);
-    if (type == "GL_TRIANGLE_FAN")      draw(GL_TRIANGLE_FAN);
-    if (type == "GL_QUADS")             draw(GL_QUADS);
-    if (type == "GL_QUAD_STRIP")        draw(GL_QUAD_STRIP);
-    if (type == "GL_POLYGON")           draw(GL_POLYGON);
-    if (type == "CIRCLES")              draw_circles();
+    draw();
 
     if (is_clear){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -51,100 +42,92 @@ void OGLDraw::paintGL()
     }
 }
 
-void OGLDraw::draw(GLenum type)
+void OGLDraw::draw()
 {
-    glPointSize(cur_point_size);
     glLineWidth(cur_line_size);
-    glBegin(type);
-        for (auto point: points){
-            glColor4f(point.col.redF(), point.col.greenF(), point.col.blueF(), point.transparency);
-            glVertex2f (point.coord.rx() * this->width() / start_width, point.coord.ry() * this->height() / start_height);
+
+    if (type == "Standart Bezier function")
+        draw_bezier_func();
+    else
+        draw_without_bezier_func();
+}
+
+void OGLDraw::draw_bezier_func()
+{
+    for (int i = 0; i < points.size(); i += 3){
+        glEnable(GL_LINE_STIPPLE);
+        glLineStipple(1,0x0101);
+        glColor3f(255, 255, 0);
+        glBegin(GL_LINE_STRIP);
+            for (int j = i; j < points.size() && j < i + 4; j++){
+                glVertex2f(points[j].coord.rx() * this->width() / start_width,
+                           points[j].coord.ry() * this->height() / start_height);
+            }
+        glEnd();
+        glDisable(GL_LINE_STIPPLE);
+
+        if (i + 3 < points.size()){
+            glBegin(GL_LINES);
+                for (float t = 0; t < 1; t += 0.01){
+                    QPoint p;
+                    p.rx() = pow(1 - t, 3) * points[i].coord.rx() + 3 * t * pow((t-1), 2) * points[i + 1].coord.rx() +
+                            3 * pow(t, 2) * (1 - t) * points[i + 2].coord.rx() + pow(t, 3) * points[i + 3].coord.rx();
+                    p.ry() = pow(1 - t, 3) * points[i].coord.ry() + 3 * t * pow((t-1), 2) * points[i + 1].coord.ry() +
+                            3 * pow(t, 2) * (1 - t) * points[i + 2].coord.ry() + pow(t, 3) * points[i + 3].coord.ry();
+                    glColor3f(180, 0, 180);
+                    glVertex2f (p.rx() * this->width() / start_width, p.ry() * this->height() / start_height);
+                }
+            glEnd();
         }
-    glEnd();
+    }
 }
 
-void OGLDraw::draw_scissor_test()
+void OGLDraw::draw_without_bezier_func()
 {
-    if (is_scissor_test && rubberBand && (rubberBand->width() > 0 || rubberBand->height() > 0)){
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(rubberBand->x() * start_width / this->width(), this->height() - (rubberBand->y() + rubberBand->height())  * start_height / this->height(),
-                  rubberBand->width() * start_width / this->width(), rubberBand->height() * start_height / this->height());
-    }
-    else glDisable(GL_SCISSOR_TEST);
-}
+    for (int i = 0; i < points.size(); i += 3){
+        glEnable(GL_LINE_STIPPLE);
+        glLineStipple(1,0x0101);
+        glColor3f(255, 255, 0);
+        glBegin(GL_LINE_STRIP);
+            for (int j = i; j < points.size() && j < i + 4; j++){
+                glVertex2f(points[j].coord.rx() * this->width() / start_width,
+                           points[j].coord.ry() * this->height() / start_height);
+            }
+        glEnd();
+        glDisable(GL_LINE_STIPPLE);
 
-void OGLDraw::draw_alpha_test()
-{
-    if (is_alpha_test){
-        glEnable(GL_ALPHA_TEST);
-        if (type_alpha == "GL_NEVER") glAlphaFunc(GL_NEVER, ref_alpha);
-        if (type_alpha == "GL_LESS") glAlphaFunc(GL_LESS, ref_alpha);
-        if (type_alpha == "GL_EQUAL") glAlphaFunc(GL_EQUAL, ref_alpha);
-        if (type_alpha == "GL_LEQUAL") glAlphaFunc(GL_LEQUAL, ref_alpha);
-        if (type_alpha == "GL_GREATER") glAlphaFunc(GL_GREATER, ref_alpha);
-        if (type_alpha == "GL_NOTEQUAL") glAlphaFunc(GL_NOTEQUAL, ref_alpha);
-        if (type_alpha == "GL_GEQUAL") glAlphaFunc(GL_GEQUAL, ref_alpha);
-        if (type_alpha == "GL_ALWAYS") glAlphaFunc(GL_ALWAYS, ref_alpha);
+        if (i + 3 < points.size()){
+            glBegin(GL_LINES);
+                for (float t = 0; t < 1; t += 0.01){
+                    QPoint E(t * points[i + 1].coord.rx() + (1 - t) * points[i].coord.rx(),
+                             t * points[i + 1].coord.ry() + (1 - t) * points[i].coord.ry());
+                    QPoint F(t * points[i + 2].coord.rx() + (1 - t) * points[i + 1].coord.rx(),
+                             t * points[i + 2].coord.ry() + (1 - t) * points[i + 1].coord.ry());
+                    QPoint G(t * points[i + 3].coord.rx() + (1 - t) * points[i + 2].coord.rx(),
+                             t * points[i + 3].coord.ry() + (1 - t) * points[i + 2].coord.ry());
+                    QPoint H(t * F.rx() + (1 - t) * E.rx(),
+                             t * F.ry() + (1 - t) * E.ry());
+                    QPoint I(t * G.rx() + (1 - t) * F.rx(),
+                             t * G.ry() + (1 - t) * F.ry());
+                    QPoint J(t * I.rx() + (1 - t) * H.rx(),
+                             t * I.ry() + (1 - t) * H.ry());
+                    glColor3f(180, 0, 180);
+                    glVertex2f (J.rx() * this->width() / start_width, J.ry() * this->height() / start_height);
+                }
+            glEnd();
+        }
     }
-    else glDisable(GL_ALPHA_TEST);
+
 }
 
 void OGLDraw::mousePressEvent(QMouseEvent* apEvent)
 {
-    event_point = apEvent->pos();
-    if (!rubberBand)
-        rubberBand = std::unique_ptr<QRubberBand>(new QRubberBand(QRubberBand::Rectangle, this));
-    rubberBand->setGeometry(QRect(event_point, QSize()));
-    rubberBand->show();
-}
-
-void OGLDraw::mouseMoveEvent(QMouseEvent *apEvent)
-{
-    rubberBand->setGeometry(QRect(event_point, apEvent->pos()).normalized());
-}
-
-void OGLDraw::mouseReleaseEvent(QMouseEvent *apEvent)
-{
-    rubberBand->hide();
-    if (!(rubberBand->width() > 0 || rubberBand->height() > 0)){
-        QPoint p = apEvent->pos();
-        p.rx() = p.rx() * start_width / this->width();
-        p.ry() = p.ry() * start_height / this->height();
-        Point point(p, cur_color, cur_transparency);
-        points.append(point);
-    }
-    else {
-        if (!is_scissor_test)
-            rubberBand = NULL;
-    }
+    QPoint p = apEvent->pos();
+    p.rx() = p.rx() * start_width / this->width();
+    p.ry() = p.ry() * start_height / this->height();
+    Point point(p, cur_color);
+    points.append(point);
     repaint();
 }
 
-void OGLDraw::draw_circles()
-{
-    int triangleAmount = 40; //# of triangles used to draw circle
-    GLfloat twicePi = 2.0f * M_PI;
 
-    for (auto point: points){
-        glColor4fv((GLfloat*)&point.col);
-        glVertex2fv((GLfloat*)&point.coord);
-        glBegin(GL_TRIANGLE_FAN);
-            for(int i = 0; i <= triangleAmount;i++) {
-                glColor4f(point.col.redF(), point.col.greenF(), point.col.blueF(), point.transparency);
-                glVertex2f(
-                    (point.coord.rx() + (cur_point_size * cos(i * twicePi / triangleAmount))) * start_width / this->width(),
-                    (point.coord.ry() + (cur_point_size * sin(i * twicePi / triangleAmount))) * start_height / this->height()
-                );
-            }
-        glEnd();
-    }
-}
-
-void OGLDraw::draw_blend()
-{
-    if (is_blend){
-        glEnable(GL_BLEND);
-        glBlendFunc(sfactor_map[type_sfactor], dfactor_map[type_dfactor]);
-    }
-    else glDisable(GL_BLEND);
-}
