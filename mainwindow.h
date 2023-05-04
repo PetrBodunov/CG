@@ -2,7 +2,6 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QColorDialog>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -17,33 +16,85 @@ public:
     ~MainWindow();
 
 private slots:
-    void on_quitButton_clicked();
+    void on_cubeXSlider_valueChanged(int value);
 
-    void on_primitivesBox_currentTextChanged(const QString &arg1);
+    void on_cubeYSlider_valueChanged(int value);
 
-    void on_colorButton_clicked();
+    void on_cubeZSlider_valueChanged(int value);
 
-    void on_clearButton_clicked();
+    void on_cubeASlider_valueChanged(int value);
 
-    void on_lineSlider_sliderMoved(int position);
+    void on_cubeAngleSlider_valueChanged(int value);
 
-    void on_pointlSlider_sliderMoved(int position);
+    void on_sphereXSlider_valueChanged(int value);
 
-    void on_scissorCheck_stateChanged(int arg1);
+    void on_sphereYSlider_valueChanged(int value);
 
-    void on_alphaCheck_stateChanged(int arg1);
+    void on_sphereZSlider_valueChanged(int value);
 
-    void on_alphaBox_currentTextChanged(const QString &arg1);
+    void on_sphereRSlider_valueChanged(int value);
 
-    void on_transparencySlider_sliderMoved(int position);
+    void on_sphereAngleSlider_valueChanged(int value);
 
-    void on_refSlider_sliderMoved(int position);
+    void on_sphereSlicesSlider_valueChanged(int value);
 
-    void on_blendCheck_stateChanged(int arg1);
+    void on_sphereSpectreSlider_valueChanged(int value);
 
-    void on_sfactorBox_currentTextChanged(const QString &arg1);
+    void on_sf1XSlider_valueChanged(int value);
 
-    void on_dfactorBox_currentTextChanged(const QString &arg1);
+    void on_sf1YSlider_valueChanged(int value);
+
+    void on_sf1ZSlider_valueChanged(int value);
+
+    void on_sf1RSlider_valueChanged(int value);
+
+    void on_sf1RinSlider_valueChanged(int value);
+
+    void on_sf1AngleSlider_valueChanged(int value);
+
+    void on_sf1SlicersSlider_valueChanged(int value);
+
+    void on_sf1SlidersSlider_valueChanged(int value);
+
+    void on_sf2XSlider_valueChanged(int value);
+
+    void on_sf2YSlider_valueChanged(int value);
+
+    void on_sf2ZSlider_valueChanged(int value);
+
+    void on_sf2HSlider_valueChanged(int value);
+
+    void on_sf2RSlider_valueChanged(int value);
+
+    void on_sf2AngleSlider_valueChanged(int value);
+
+    void on_sf2SlicesSlider_valueChanged(int value);
+
+    void on_sf2StacksSlider_valueChanged(int value);
+
+    void on_cubeScaleXSlider_valueChanged(int value);
+
+    void on_cubeScaleYSlider_valueChanged(int value);
+
+    void on_cubeScaleZSlider_valueChanged(int value);
+
+    void on_sphereScaleXSlider_valueChanged(int value);
+
+    void on_sphereScaleYSlider_valueChanged(int value);
+
+    void on_sphereScaleZSlider_valueChanged(int value);
+
+    void on_sf1ScaleXSlider_valueChanged(int value);
+
+    void on_sf1ScaleYSlider_valueChanged(int value);
+
+    void on_sf1ScaleZSlider_valueChanged(int value);
+
+    void on_sf2ScaleXSlider_valueChanged(int value);
+
+    void on_sf2ScaleYSlider_valueChanged(int value);
+
+    void on_sf2ScaleZSlider_valueChanged(int value);
 
 private:
     Ui::MainWindow *ui;

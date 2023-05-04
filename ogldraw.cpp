@@ -2,14 +2,23 @@
 
 OGLDraw::OGLDraw(QWidget* pwgt) : QOpenGLWidget(pwgt)
 {
+    grabKeyboard();
+}
+
+OGLDraw::~OGLDraw()
+{
+    delete s;
+    delete c;
+    delete sf1;
+    delete sf2;
 }
 
 void OGLDraw::initializeGL()
 {
     initializeOpenGLFunctions();
     QOpenGLFunctions* pFunc = QOpenGLContext::currentContext()->functions();
-//    pFunc->glClearColor(211/255.0f,211/255.0f,211/255.0f, 1.0f);
     pFunc->glClearColor(0, 0, 0, 1.0f);
+
     start_width = this->width();
     start_height = this->height();
 }
@@ -18,133 +27,207 @@ void OGLDraw::resizeGL(int nWidth, int nHeight)
 {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0, nWidth, nHeight, 0, -1, 1);
-    glViewport (0, 0, (GLint)nWidth, (GLint)nHeight);
+//    glOrtho(0, nWidth, nHeight, 0, -1, 1);
+//    glViewport (0, 0, (GLint)nWidth, (GLint)nHeight);
+
 }
 
 void OGLDraw::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    draw_scissor_test();
 
-    draw_alpha_test();
+    glPushMatrix();
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    draw_blend();
+    moveCamera();
+    draw_coordinate_system();
+    draw_cube(c, QColor(0,255,255));
+    draw_sphere(s, QColor(255,0,255));
+    draw_specialfig1(sf1, QColor(200,200,200));
+    draw_specialfig2(sf2, QColor(255,255,0));
 
-    if (type == "GL_POINTS")            draw(GL_POINTS);
-    if (type == "GL_LINES")             draw(GL_LINES);
-    if (type == "GL_LINE_STRIP")        draw(GL_LINE_STRIP);
-    if (type == "GL_LINE_LOOP")         draw(GL_LINE_LOOP);
-    if (type == "GL_TRIANGLES")         draw(GL_TRIANGLES);
-    if (type == "GL_TRIANGLE_STRIP")    draw(GL_TRIANGLE_STRIP);
-    if (type == "GL_TRIANGLE_FAN")      draw(GL_TRIANGLE_FAN);
-    if (type == "GL_QUADS")             draw(GL_QUADS);
-    if (type == "GL_QUAD_STRIP")        draw(GL_QUAD_STRIP);
-    if (type == "GL_POLYGON")           draw(GL_POLYGON);
-    if (type == "CIRCLES")              draw_circles();
+    glPopMatrix();
 
-    if (is_clear){
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        is_clear = false;
-        points.clear();
-    }
+
 }
 
-void OGLDraw::draw(GLenum type)
+void OGLDraw::draw_coordinate_system()
 {
-    glPointSize(cur_point_size);
-    glLineWidth(cur_line_size);
-    glBegin(type);
-        for (auto point: points){
-            glColor4f(point.col.redF(), point.col.greenF(), point.col.blueF(), point.transparency);
-            glVertex2f (point.coord.rx() * this->width() / start_width, point.coord.ry() * this->height() / start_height);
-        }
+    glColor3f(1,0,0);
+    glBegin(GL_LINES);
+        glVertex3d(0, 0, 0);
+        glVertex3d(1, 0, 0);
+    glEnd();
+
+    glColor3f(0,1,0);
+    glBegin(GL_LINES);
+        glVertex3d(0, 0, 0);
+        glVertex3d(0, 1, 0);
+    glEnd();
+
+    glColor3f(0,0,1);
+    glBegin(GL_LINES);
+        glVertex3d(0, 0, 0);
+        glVertex3d(0, 0, 1);
     glEnd();
 }
 
-void OGLDraw::draw_scissor_test()
+
+//void OGLDraw::showWorld()
+//{
+//    float vert[] = {1,1,0, 1,-1,0, -1,-1,0, -1,1,0};
+//    glEnableClientState(GL_VERTEX_ARRAY);
+//        glVertexPointer(3, GL_FLOAT, 0, &vert);
+//        glColor3f(0,0.5,0);
+//        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+//    glDisableClientState(GL_VERTEX_ARRAY);
+//}
+
+
+void OGLDraw::moveCamera()
 {
-    if (is_scissor_test && rubberBand && (rubberBand->width() > 0 || rubberBand->height() > 0)){
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(rubberBand->x() * start_width / this->width(), this->height() - (rubberBand->y() + rubberBand->height())  * start_height / this->height(),
-                  rubberBand->width() * start_width / this->width(), rubberBand->height() * start_height / this->height());
-    }
-    else glDisable(GL_SCISSOR_TEST);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(60.0, (float)start_width / start_height, 0.1, 400.0);
+    float R = sqrt(xed * xed + zed * zed);
+    xev = xed * cos(angley * M_PI / 180);
+    yev = R * sin(angley * M_PI / 180);
+    zev = zed * cos(angley * M_PI / 180);
+
+
+    gluLookAt(xe, ye, ze, xe + xev, ye + yev, ze + zev, 0, 1, 0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 }
 
-void OGLDraw::draw_alpha_test()
+void OGLDraw::keyPressEvent(QKeyEvent *ev)
 {
-    if (is_alpha_test){
-        glEnable(GL_ALPHA_TEST);
-        if (type_alpha == "GL_NEVER") glAlphaFunc(GL_NEVER, ref_alpha);
-        if (type_alpha == "GL_LESS") glAlphaFunc(GL_LESS, ref_alpha);
-        if (type_alpha == "GL_EQUAL") glAlphaFunc(GL_EQUAL, ref_alpha);
-        if (type_alpha == "GL_LEQUAL") glAlphaFunc(GL_LEQUAL, ref_alpha);
-        if (type_alpha == "GL_GREATER") glAlphaFunc(GL_GREATER, ref_alpha);
-        if (type_alpha == "GL_NOTEQUAL") glAlphaFunc(GL_NOTEQUAL, ref_alpha);
-        if (type_alpha == "GL_GEQUAL") glAlphaFunc(GL_GEQUAL, ref_alpha);
-        if (type_alpha == "GL_ALWAYS") glAlphaFunc(GL_ALWAYS, ref_alpha);
-    }
-    else glDisable(GL_ALPHA_TEST);
-}
+    float xt;
+    switch(ev->key()){
+        case Qt::Key_W:
+            xe += xev;
+            ye += yev;
+            ze += zev;
+            break;
 
-void OGLDraw::mousePressEvent(QMouseEvent* apEvent)
-{
-    event_point = apEvent->pos();
-    if (!rubberBand)
-        rubberBand = std::unique_ptr<QRubberBand>(new QRubberBand(QRubberBand::Rectangle, this));
-    rubberBand->setGeometry(QRect(event_point, QSize()));
-    rubberBand->show();
-}
+        case Qt::Key_A:
+            xe -= 0.02;
+            break;
 
-void OGLDraw::mouseMoveEvent(QMouseEvent *apEvent)
-{
-    rubberBand->setGeometry(QRect(event_point, apEvent->pos()).normalized());
-}
+        case Qt::Key_S:
+            xe -= xev;
+            ye -= yev;
+            ze -= zev;
+            break;
 
-void OGLDraw::mouseReleaseEvent(QMouseEvent *apEvent)
-{
-    rubberBand->hide();
-    if (!(rubberBand->width() > 0 || rubberBand->height() > 0)){
-        QPoint p = apEvent->pos();
-        p.rx() = p.rx() * start_width / this->width();
-        p.ry() = p.ry() * start_height / this->height();
-        Point point(p, cur_color, cur_transparency);
-        points.append(point);
+        case Qt::Key_D:
+            xe += 0.02;
+            break;
+
+        case Qt::Key_Space:
+            ye += 0.05;
+            break;
+
+        case Qt::Key_Shift:
+            ye -= 0.05;
+            break;
+
+        case Qt::Key_Up:
+            angley += 2;
+            break;
+
+        case Qt::Key_Down:
+            angley -= 2;
+            break;
+
+        case Qt::Key_Left:
+            xt = xed;
+            xed = xed * cos(-2 * M_PI / 180) - zed * sin(-2 * M_PI / 180);
+            zed = xt * sin(-2 * M_PI / 180) + zed * cos(-2 * M_PI / 180);
+            break;
+
+        case Qt::Key_Right:
+            xt = xed;
+            xed = xed * cos(2 * M_PI / 180) - zed * sin(2 * M_PI / 180);
+            zed = xt * sin(2 * M_PI / 180) + zed * cos(2 * M_PI / 180);
+            break;
+
+        default:
+            break;
     }
-    else {
-        if (!is_scissor_test)
-            rubberBand = NULL;
-    }
+
     repaint();
 }
 
-void OGLDraw::draw_circles()
-{
-    int triangleAmount = 40; //# of triangles used to draw circle
-    GLfloat twicePi = 2.0f * M_PI;
 
-    for (auto point: points){
-        glColor4fv((GLfloat*)&point.col);
-        glVertex2fv((GLfloat*)&point.coord);
-        glBegin(GL_TRIANGLE_FAN);
-            for(int i = 0; i <= triangleAmount;i++) {
-                glColor4f(point.col.redF(), point.col.greenF(), point.col.blueF(), point.transparency);
-                glVertex2f(
-                    (point.coord.rx() + (cur_point_size * cos(i * twicePi / triangleAmount))) * start_width / this->width(),
-                    (point.coord.ry() + (cur_point_size * sin(i * twicePi / triangleAmount))) * start_height / this->height()
-                );
-            }
-        glEnd();
-    }
+void OGLDraw::draw_cube(Cube* objectmodel, QColor color){
+    glPushMatrix();
+    glScalef(objectmodel->scale.x(),objectmodel->scale.y(),objectmodel->scale.z());
+    glRotatef(objectmodel->angle,objectmodel->rotate.x(),objectmodel->rotate.y(),objectmodel->rotate.z());
+    glTranslatef(objectmodel->shift.x(),objectmodel->shift.y(),objectmodel->shift.z());
+
+    glColor3ub(color.red(),color.green(),color.blue());
+
+
+    glBegin(GL_QUADS);
+    for (int i = 0;i < objectmodel->coord.size();i++) {
+        glVertex3d(objectmodel->coord[i].x(), objectmodel->coord[i].y(), objectmodel->coord[i].z());
+     }
+    glEnd();
+
+    glPopMatrix();
+
 }
 
-void OGLDraw::draw_blend()
+
+void OGLDraw::draw_sphere(Sphere* objectmodel, QColor color)
 {
-    if (is_blend){
-        glEnable(GL_BLEND);
-        glBlendFunc(sfactor_map[type_sfactor], dfactor_map[type_dfactor]);
+    glPushMatrix();
+    glRotatef(objectmodel->angle,objectmodel->rotate.x(),objectmodel->rotate.y(),objectmodel->rotate.z());
+    glTranslatef(objectmodel->shift.x(),objectmodel->shift.y(),objectmodel->shift.z());
+    glScalef(objectmodel->scale.x(),objectmodel->scale.y(),objectmodel->scale.z());
+    glColor3ub(color.red(),color.green(),color.blue());
+
+    glBegin(GL_TRIANGLE_STRIP);
+        for (int i = 0;i < objectmodel->coord.size();i++) {
+            glVertex3d(objectmodel->coord[i].x(), objectmodel->coord[i].y(), objectmodel->coord[i].z());
+        }
+    glEnd();
+
+    glPopMatrix();
+}
+
+
+void OGLDraw::draw_specialfig1(SpecialFig1* objectmodel, QColor color)
+{
+    glPushMatrix();
+    glRotatef(objectmodel->angle,objectmodel->rotate.x(),objectmodel->rotate.y(),objectmodel->rotate.z());
+    glTranslatef(objectmodel->shift.x(),objectmodel->shift.y(),objectmodel->shift.z());
+    glScalef(objectmodel->scale.x(),objectmodel->scale.y(),objectmodel->scale.z());
+    glColor3ub(color.red(),color.green(),color.blue());
+
+    glBegin(GL_TRIANGLE_STRIP);
+        for (int i = 0;i < objectmodel->coord.size();i++) {
+            glVertex3d(objectmodel->coord[i].x(), objectmodel->coord[i].y(), objectmodel->coord[i].z());
+        }
+    glEnd();
+
+    glPopMatrix();
+}
+
+
+void OGLDraw::draw_specialfig2(SpecialFig2* objectmodel, QColor color){
+    glPushMatrix();
+    glRotatef(objectmodel->angle,objectmodel->rotate.x(),objectmodel->rotate.y(),objectmodel->rotate.z());
+    glTranslatef(objectmodel->shift.x(),objectmodel->shift.y(),objectmodel->shift.z());
+    glScalef(objectmodel->scale.x(),objectmodel->scale.y(),objectmodel->scale.z());
+    glColor3ub(color.red(),color.green(),color.blue());
+
+    glBegin(GL_QUADS);
+    for (int i = 0;i < objectmodel->coord.size();i++) {
+        glVertex3d(objectmodel->coord[i].x(), objectmodel->coord[i].y(), objectmodel->coord[i].z());
     }
-    else glDisable(GL_BLEND);
+    glEnd();
+    glPopMatrix();
 }

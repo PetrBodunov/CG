@@ -8,10 +8,15 @@
 #include <QString>
 #include <QMouseEvent>
 #include <QVector>
-#include <QRubberBand>
-#include "point.h"
 #include <cmath>
-#include <map>
+#include <QKeyEvent>
+#include <GL/glu.h>
+
+#include "sphere.h"
+#include "cube.h"
+#include "specialfig1.h"
+#include "specialfig2.h"
+
 
 class OGLDraw : public QOpenGLWidget, public QOpenGLFunctions
 {
@@ -21,62 +26,31 @@ protected:
     void paintGL() override;
 
 public:
-    QString type = "GL_POINTS";
-    QColor cur_color = Qt::blue;
-    int cur_point_size = 1;
-    int cur_line_size = 1;
-    QVector<Point> points;
-    bool is_clear = false;
     int start_width;
     int start_height;
 
-    bool is_scissor_test = false;
-    bool is_alpha_test = false;
-    bool is_blend = false;
-    std::unique_ptr<QRubberBand> rubberBand;
-    QPoint event_point;
-    QString type_alpha = "GL_NEVER";
-    float ref_alpha = 0;
-    float cur_transparency = 1;
-    QString type_sfactor = "GL_ZERO";
-    QString type_dfactor = "GL_ZERO";
-    std::map<QString, GLenum> sfactor_map = {{"GL_ZERO", GL_ZERO},
-                                             {"GL_ONE", GL_ONE},
-                                             {"GL_DST_COLOR", GL_DST_COLOR},
-                                             {"GL_ONE_MINUS_DST_COLOR", GL_ONE_MINUS_DST_COLOR},
-                                             {"GL_SRC_ALPHA", GL_SRC_ALPHA},
-                                             {"GL_ONE_MINUS_SRC_ALPHA", GL_ONE_MINUS_SRC_ALPHA},
-                                             {"GL_DST_ALPHA", GL_DST_ALPHA},
-                                             {"GL_ONE_MINUS_DST_ALPHA", GL_ONE_MINUS_DST_ALPHA},
-                                             {"GL_SRC_ALPHA_SATURATE", GL_SRC_ALPHA_SATURATE}
-                                            };
 
-    std::map<QString, GLenum> dfactor_map = {{"GL_ZERO", GL_ZERO},
-                                             {"GL_ONE", GL_ONE},
-                                             {"GL_SRC_COLOR", GL_SRC_COLOR},
-                                             {"GL_ONE_MINUS_SRC_COLOR", GL_ONE_MINUS_SRC_COLOR},
-                                             {"GL_SRC_ALPHA", GL_SRC_ALPHA},
-                                             {"GL_ONE_MINUS_SRC_ALPHA", GL_ONE_MINUS_SRC_ALPHA},
-                                             {"GL_DST_ALPHA", GL_DST_ALPHA},
-                                             {"GL_ONE_MINUS_DST_ALPHA", GL_ONE_MINUS_DST_ALPHA}
-                                            };
+    float xe = 0, ye = 0.5, ze = 2.5;
+    float xev = 0, yev = 0, zev = 0;
+    float xed = 0, zed = -0.05;
+    int angley = 0;
+
+    Cube* c = new Cube(0.5, QVector3D(0, 1, 0), QVector3D(0.5,0.5,-0.4), QVector3D(1,1,1));
+    Sphere* s = new Sphere(0.4, 15, 15, QVector3D(1, 0, 0), QVector3D(0.5,0.5,0.4), QVector3D(1,1,1));
+    SpecialFig1* sf1 = new SpecialFig1(0.4, 0.2, 15, 15, QVector3D(1, 0, 0), QVector3D(-0.5,0.5,0.4), QVector3D(1,1,1));
+    SpecialFig2* sf2 = new SpecialFig2(0.6, 0.4, 4, 15, QVector3D(1, 0, 0), QVector3D(-0.2,-0.3,-0.4), QVector3D(1,1,1));
 
     OGLDraw(QWidget* pwgt = NULL);
+    ~OGLDraw();
 
-    void draw(GLenum type);
+    void moveCamera();
+    void draw_cube(Cube* objectmodel, QColor color);
+    void draw_sphere(Sphere* objectmodel, QColor color);
+    void draw_coordinate_system();
+    void draw_specialfig1(SpecialFig1* obj, QColor color);
+    void draw_specialfig2(SpecialFig2* objectmodel, QColor color);
 
-    void draw_circles();
-
-    void draw_scissor_test();
-
-    void draw_alpha_test();
-
-    void draw_blend();
-
-
-    void mousePressEvent(QMouseEvent*) override;
-    void mouseMoveEvent(QMouseEvent *apEvent) override;
-    void mouseReleaseEvent(QMouseEvent *apEvent) override;
+    void keyPressEvent(QKeyEvent *ev) override;
 };
 
 #endif // OGLDRAW_H
