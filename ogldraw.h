@@ -10,6 +10,7 @@
 #include <QVector>
 #include "point.h"
 #include <cmath>
+#include <QOpenGLShaderProgram>
 
 
 class OGLDraw : public QOpenGLWidget, public QOpenGLFunctions
@@ -23,10 +24,18 @@ public:
     int cur_line_size = 2;
     QColor cur_color = QColor(QColorConstants::Svg::purple);
     QVector<Point> points;
+    QVector<Point> points_sh;
     int start_width;
     int start_height;
     bool is_clear = false;
     QString type = "Standart Bezier function";
+
+
+    bool is_point = false;
+    QOpenGLShaderProgram sh_program;
+    bool turn_shader = false;
+    GLfloat projection_mat[16];
+    GLfloat modelview_mat[16];
 
     OGLDraw(QWidget* pwgt = NULL);
 
