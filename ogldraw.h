@@ -8,9 +8,14 @@
 #include <QString>
 #include <QMouseEvent>
 #include <QVector>
-#include "point.h"
 #include <cmath>
-#include <QOpenGLShaderProgram>
+#include <QKeyEvent>
+#include <GL/glu.h>
+
+#include "sphere.h"
+#include "cube.h"
+#include "specialfig1.h"
+#include "specialfig2.h"
 
 
 class OGLDraw : public QOpenGLWidget, public QOpenGLFunctions
@@ -21,28 +26,31 @@ protected:
     void paintGL() override;
 
 public:
-    int cur_line_size = 2;
-    QColor cur_color = QColor(QColorConstants::Svg::purple);
-    QVector<Point> points;
-    QVector<Point> points_sh;
     int start_width;
     int start_height;
-    bool is_clear = false;
-    QString type = "Standart Bezier function";
 
 
-    bool is_point = false;
-    QOpenGLShaderProgram sh_program;
-    bool turn_shader = false;
-    GLfloat projection_mat[16];
-    GLfloat modelview_mat[16];
+    float xe = 0, ye = 0.5, ze = 2.5;
+    float xev = 0, yev = 0, zev = 0;
+    float xed = 0, zed = -0.05;
+    int angley = 0;
+
+    Cube* c = new Cube(0.5, QVector3D(0, 1, 0), QVector3D(0.5,0.5,-0.4), QVector3D(1,1,1));
+    Sphere* s = new Sphere(0.4, 15, 15, QVector3D(1, 0, 0), QVector3D(0.5,0.5,0.4), QVector3D(1,1,1));
+    SpecialFig1* sf1 = new SpecialFig1(0.4, 0.2, 15, 15, QVector3D(1, 0, 0), QVector3D(-0.5,0.5,0.4), QVector3D(1,1,1));
+    SpecialFig2* sf2 = new SpecialFig2(0.6, 0.4, 4, 15, QVector3D(1, 0, 0), QVector3D(-0.2,-0.3,-0.4), QVector3D(1,1,1));
 
     OGLDraw(QWidget* pwgt = NULL);
+    ~OGLDraw();
 
-    void mousePressEvent(QMouseEvent* apEvent) override;
-    void draw();
-    void draw_bezier_func();
-    void draw_without_bezier_func();
+    void moveCamera();
+    void draw_cube(Cube* objectmodel, QColor color);
+    void draw_sphere(Sphere* objectmodel, QColor color);
+    void draw_coordinate_system();
+    void draw_specialfig1(SpecialFig1* obj, QColor color);
+    void draw_specialfig2(SpecialFig2* objectmodel, QColor color);
+
+    void keyPressEvent(QKeyEvent *ev) override;
 };
 
 #endif // OGLDRAW_H
